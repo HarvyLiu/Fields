@@ -1,0 +1,125 @@
+---
+import Shell from '../layouts/Shell.astro';
+import Marquee from '../components/Marquee.astro';
+import EntryCard from '../components/EntryCard.astro';
+import { profile, impact, fields } from '../site.config';
+import { featuredEntries, fieldCounts, tabCounts, entryHref } from '../lib/entries';
+
+const featured = await featuredEntries();
+const withFields = await fieldCounts();
+const sections = await tabCounts();
+
+// Paint the accent phrase without duplicating the thesis in config.
+const phrase = profile.thesisAccent;
+const hasPhrase = phrase.length > 0 && profile.thesis.includes(phrase);
+const cut = hasPhrase ? profile.thesis.indexOf(phrase) : 0;
+const before = hasPhrase ? profile.thesis.slice(0, cut) : profile.thesis;
+const after = hasPhrase ? profile.thesis.slice(cut + phrase.length) : '';
+
+const countLabel = (count: number, unit: 'entry' | 'image') =>
+  count === 1 ? unit : unit === 'entry' ? 'entries' : 'images';
+
+// A page-style section has nothing to count, so it says what it is
+// rather than showing a hollow "0 entries".
+const sectionMeta = (tab: (typeof sections)[number]) =>
+  tab.layout === 'about'
+    ? 'Profile'
+    : tab.count > 0
+      ? `${tab.count} ${countLabel(tab.count, tab.unit)}`
+      : '';
+
+const year = profile.updated.slice(0, 4);
+const marqueeWords = [...fields.map((field) => field.short), ...impact.tags.map((tag) => tag.label)];
+---
+
+<Shell>
+  <header class="hero" data-reveal>
+    {profile.status && <span class="status">{profile.status}</span>}
+    <span class="eyebrow">{profile.location} · Portfolio {year}</span>
+    <h1>
+      {before}{hasPhrase && <span class="hl">{phrase}</span>}{after}
+    </h1>
+    <p class="hero__intro">{profile.intro}</p>
+  </header>
+
+  <Marquee items={marqueeWords} />
+
+  <section class="section" aria-labelledby="fields-heading" data-reveal>
+    <div class="section__head">
+      <span class="section__num">01</span>
+      <h2 id="fields-heading">Fields</h2>
+      <span class="eyebrow">What I work in</span>
+    </div>
+    <div class="field-grid">
+      {
+        withFields.map((field) => (
+          <a
+            class="field-card"
+            href={`/field/${field.id}`}
+            style={`--fc:${field.accent};--fc-light:${field.accentLight ?? field.accent}`}
+          >
+            <h3>{field.label}</h3>
+            <p>{field.blurb}</p>
+            <p class="field-card__count">
+              {`${field.count} ${field.count === 1 ? 'entry' : 'entries'}`}
+            </p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  {
+    featured.length > 0 && (
+      <section class="section" aria-labelledby="featured-heading" data-reveal>
+        <div class="section__head">
+          <span class="section__num">02</span>
+          <h2 id="featured-heading">Selected work</h2>
+          <a href={`/${sections[0]?.id ?? ''}`}>All sections →</a>
+        </div>
+        <div class="cards">
+          {featured.map((entry) => (
+            <EntryCard entry={entry} />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <section class="section" aria-labelledby="impact-heading" data-reveal>
+    <div class="section__head">
+      <span class="section__num">03</span>
+      <h2 id="impact-heading">{impact.label}</h2>
+      <span class="eyebrow">What it's for</span>
+    </div>
+    <p class="page-head__blurb" style="margin-top:0">{impact.blurb}</p>
+    <div class="field-grid" style="margin-top:22px">
+      {
+        impact.tags.map((tag) => (
+          <div class="field-card" style="--fc:var(--fg-3)">
+            <h3>{tag.label}</h3>
+            <p>{tag.note}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="sections-heading" data-reveal>
+    <div class="section__head">
+      <span class="section__num">04</span>
+      <h2 id="sections-heading">Everything, by section</h2>
+    </div>
+    <div class="rows">
+      {
+        sections.map((tab) => (
+          <a class="row" href={`/${tab.id}`}>
+            <span class="row__title">{tab.label}</span>
+            <span class="row__date">{sectionMeta(tab)}</span>
+            <span class="row__sub">{tab.blurb}</span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+</Shell>

@@ -1,0 +1,17 @@
+---
+interface Props {
+  items: string[];
+}
+
+const { items } = Astro.props;
+
+// Two identical halves so the -50% loop is seamless.
+const half = Array.from({ length: 3 }, () => items).flat();
+const track = [...half, ...half];
+---
+
+<div class="marquee" aria-hidden="true">
+  <div class="marquee__track">
+    {track.map((item) => <span>{item}</span>)}
+  </div>
+</div>

@@ -1,0 +1,27 @@
+---
+import type { Entry } from '../lib/entries';
+import { formatDate, entryHref } from '../lib/entries';
+
+interface Props {
+  entry: Entry;
+}
+
+const { entry } = Astro.props;
+const href = entryHref(entry);
+---
+
+<a class="row" href={href} data-fields={entry.data.fields.join(' ')}>
+  <span class="row__title">{entry.data.title}</span>
+  <span class="row__date">{formatDate(entry.data.date)}</span>
+  <span class="row__sub">
+    {entry.data.org && <span>{entry.data.org}</span>}
+    {
+      entry.data.role && (
+        <>
+          {entry.data.org && <span class="row__dot" aria-hidden="true">·</span>}
+          <span>{entry.data.role}</span>
+        </>
+      )
+    }
+  </span>
+</a>

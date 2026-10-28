@@ -1,0 +1,114 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { render } from 'astro:content';
+import Shell from '../../layouts/Shell.astro';
+import {
+  visibleEntries,
+  fieldsOf,
+  formatRange,
+  tabOf,
+  entryHref,
+} from '../../lib/entries';
+import { impactById } from '../../site.config';
+
+export const getStaticPaths = (async () => {
+  const entries = await visibleEntries();
+  return entries.map((entry) => ({
+    params: { tab: entry.data.tab, slug: entry.id },
+    props: { entry },
+  }));
+}) satisfies GetStaticPaths;
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+
+const tab = tabOf(entry);
+const disciplines = fieldsOf(entry);
+const values = entry.data.impact.map((id) => impactById(id)).filter(Boolean);
+const title = entry.data.title;
+---
+
+<Shell title={title} description={entry.data.summary}>
+  <article class="detail">
+    <div data-reveal>
+      <a class="backlink" href={`/${entry.data.tab}`}>← {tab?.label ?? 'Back'}</a>
+
+      <span class="eyebrow">{tab?.label}</span>
+      <h1>{title}</h1>
+      <p class="detail__lead">{entry.data.summary}</p>
+    </div>
+
+    <dl class="facts" data-reveal>
+      {
+        entry.data.date && (
+          <div class="fact">
+            <dt>Date</dt>
+            <dd>{formatRange(entry.data.date, entry.data.end)}</dd>
+          </div>
+        )
+      }
+      {
+        entry.data.org && (
+          <div class="fact">
+            <dt>Organisation</dt>
+            <dd>{entry.data.org}</dd>
+          </div>
+        )
+      }
+      {
+        entry.data.role && (
+          <div class="fact">
+            <dt>Role</dt>
+            <dd>{entry.data.role}</dd>
+          </div>
+        )
+      }
+      {
+        disciplines.length > 0 && (
+          <div class="fact">
+            <dt>Field</dt>
+            <dd>{disciplines.map((field) => field!.label).join(', ')}</dd>
+          </div>
+        )
+      }
+      {
+        entry.data.credential && (
+          <div class="fact">
+            <dt>Reference</dt>
+            <dd>{entry.data.credential}</dd>
+          </div>
+        )
+      }
+    </dl>
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    {
+      entry.data.link && (
+        <a
+          class="btn"
+          href={entry.data.link}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {entry.data.linkLabel ?? 'View it'} ↗
+        </a>
+      )
+    }
+
+    {
+      (values.length > 0 || entry.data.sdg.length > 0) && (
+        <div class="tags">
+          {values.map((value) => (
+            <span class="tag tag--impact">{value!.label}</span>
+          ))}
+          {entry.data.sdg.map((goal) => (
+            <span class="tag">SDG {goal}</span>
+          ))}
+        </div>
+      )
+    }
+  </article>
+</Shell>

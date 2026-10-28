@@ -1,0 +1,29 @@
+---
+interface Props {
+  options: { id: string; label: string; count: number }[];
+  total: number;
+  label?: string;
+}
+
+const { options = [], total, label = 'Filter by field' } = Astro.props;
+const usable = options.filter((option) => option.count > 0);
+---
+
+{
+  usable.length > 1 && (
+    <div class="chips" data-chips aria-label={label} role="group">
+      <button class="chip" type="button" data-chip="all" aria-pressed="true">
+        All
+      </button>
+      {usable.map((option) => (
+        <button class="chip" type="button" data-chip={option.id} aria-pressed="false">
+          {option.label}
+          <span class="chip__n">{option.count}</span>
+        </button>
+      ))}
+      <span class="chips__count" data-chips-count>
+        {`${total} ${total === 1 ? 'entry' : 'entries'}`}
+      </span>
+    </div>
+  )
+}

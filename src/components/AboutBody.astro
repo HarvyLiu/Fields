@@ -1,0 +1,89 @@
+---
+import { about, profile } from '../site.config';
+
+const sections = about.sections;
+
+// Paint the accent phrase inside the thesis without writing it twice —
+// same trick as the overview hero.
+const phrase = profile.thesisAccent;
+const hasPhrase = phrase.length > 0 && profile.thesis.includes(phrase);
+const cut = hasPhrase ? profile.thesis.indexOf(phrase) : 0;
+const before = hasPhrase ? profile.thesis.slice(0, cut) : profile.thesis;
+const after = hasPhrase ? profile.thesis.slice(cut + phrase.length) : '';
+---
+
+<div class="about">
+  <p class="about__lead" data-reveal>
+    {before}{hasPhrase && <span class="hl">{phrase}</span>}{after}
+  </p>
+
+  {
+    sections.map((section, index) => (
+      <section
+        class="about-block"
+        id={section.id}
+        aria-labelledby={`about-${section.id}`}
+        data-reveal
+      >
+        <div class="about-block__head">
+          <span class="section__num" aria-hidden="true">
+            {String(index + 1).padStart(2, '0')}
+          </span>
+          <h2 id={`about-${section.id}`}>{section.title}</h2>
+          {section.kicker && <span class="about-block__kicker">{section.kicker}</span>}
+        </div>
+
+        {section.intro && <p class="about-block__intro">{section.intro}</p>}
+
+        {section.paragraphs && (
+          <div class="about-block__body">
+            {section.paragraphs.map((paragraph) => (
+              <p>{paragraph}</p>
+            ))}
+          </div>
+        )}
+
+        {section.items && (
+          <dl class="about-facts">
+            {section.items.map((item) => (
+              <div>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+
+        {section.points && (
+          <ul class="about-points">
+            {section.points.map((point) => (
+              <li>{point}</li>
+            ))}
+          </ul>
+        )}
+
+        {section.quote && (
+          <blockquote class="about-quote">
+            <p>{section.quote}</p>
+            {section.quoteBy && <cite>{section.quoteBy}</cite>}
+          </blockquote>
+        )}
+
+        {section.links && (
+          <div class="about-links">
+            {section.links.map((link) => (
+              <a
+                href={link.href}
+                target={link.href.startsWith('http') ? '_blank' : undefined}
+                rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+              >
+                {link.label}
+                {link.href.startsWith('http') && <span aria-hidden="true"> ↗</span>}
+              </a>
+            ))}
+          </div>
+        )}
+      </section>
+    ))
+  }
+</div>

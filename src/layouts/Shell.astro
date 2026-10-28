@@ -1,0 +1,302 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import { profile, theme } from '../site.config';
+import { tabCounts } from '../lib/entries';
+
+import '@fontsource/bebas-neue/400.css';
+import '@fontsource/poppins/400.css';
+import '@fontsource/poppins/500.css';
+import '@fontsource/poppins/600.css';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description = profile.intro } = Astro.props;
+const counts = await tabCounts();
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path === href || path.startsWith(href + '/');
+
+const pageTitle = title ? `${title} — ${profile.name}` : `${profile.name} — ${profile.thesis}`;
+
+// The two accents live on <html> because they differ per theme; the
+// stylesheet maps one of them to --accent for whichever ground is active.
+const themeVars = [
+  `--accent-dark:${theme.accent}`,
+  theme.accentLight ? `--accent-light:${theme.accentLight}` : '',
+  `--density:${theme.density}`,
+]
+  .filter(Boolean)
+  .join(';');
+---
+
+<!doctype html>
+<html lang="en" style={themeVars}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" id="theme-color" content="#171415" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script is:inline>
+      (function () {
+        // The theme has to land before the first paint or the page shows
+        // the wrong ground for a frame. Dark is the default: an OS light
+        // preference does not override it, only an explicit toggle does.
+        var stored = null;
+        try {
+          stored = localStorage.getItem('theme');
+        } catch (e) {
+          /* storage blocked — fall through to the default */
+        }
+        document.documentElement.setAttribute(
+          'data-theme',
+          stored === 'light' ? 'light' : 'dark',
+        );
+
+        // Arms the scroll-reveal styles before first paint.
+        document.documentElement.classList.add('js');
+
+        // Safety net: if the module below never runs (blocked, failed to
+        // load), un-hide everything rather than serving an empty page.
+        setTimeout(function () {
+          if (!window.__revealsArmed) {
+            document.documentElement.classList.remove('js');
+          }
+        }, 2500);
+      })();
+    </script>
+    <ClientRouter />
+  </head>
+
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="topbar__inner">
+          <a class="brand__name" href="/">{profile.name}</a>
+
+          <nav class="nav" aria-label="Sections">
+            <a
+              class="nav__item"
+              href="/"
+              aria-current={path === '/' ? 'page' : undefined}
+            >
+              Overview
+            </a>
+            {
+              counts.map((tab) => (
+                <a
+                  class="nav__item"
+                  href={`/${tab.id}`}
+                  aria-current={isActive(`/${tab.id}`) ? 'page' : undefined}
+                >
+                  {tab.label}
+                </a>
+              ))
+            }
+          </nav>
+
+          <button
+            class="theme-toggle"
+            type="button"
+            data-theme-toggle
+            aria-label="Switch to light theme"
+            title="Switch between the light and dark grounds"
+          >
+            <!-- Sun: shown on the dark ground, offering light. -->
+            <svg
+              class="theme-toggle__sun"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="4.2"></circle>
+              <path
+                d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.5 5.5l1.5 1.5M17 17l1.5 1.5M18.5 5.5L17 7M7 17l-1.5 1.5"
+              ></path>
+            </svg>
+            <!-- Moon: shown on the light ground, offering dark. -->
+            <svg
+              class="theme-toggle__moon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20.5 14.7A8.6 8.6 0 0 1 9.3 3.5a8.6 8.6 0 1 0 11.2 11.2Z"
+              ></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+        <slot />
+
+        <footer class="site-foot">
+          <span>© {new Date().getFullYear()} {profile.name}</span>
+          <span>Updated {profile.updated}</span>
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      // ── Theme toggle ─────────────────────────────────────────
+      // The inline <head> script already set the attribute before paint;
+      // this keeps it correct after a client-side navigation and handles
+      // the click. Delegated from document so it survives view transitions.
+      const root = document.documentElement;
+      const GROUNDS = { dark: '#171415', light: '#f6f1e9' };
+
+      function readTheme(): 'dark' | 'light' {
+        try {
+          return localStorage.getItem('theme') === 'light' ? 'light' : 'dark';
+        } catch {
+          return 'dark';
+        }
+      }
+
+      function applyTheme(value: 'dark' | 'light') {
+        root.setAttribute('data-theme', value);
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute('content', GROUNDS[value]);
+        document.querySelectorAll<HTMLElement>('[data-theme-toggle]').forEach((btn) => {
+          btn.setAttribute(
+            'aria-label',
+            value === 'dark' ? 'Switch to light theme' : 'Switch to dark theme',
+          );
+        });
+      }
+
+      applyTheme(readTheme());
+      document.addEventListener('astro:after-swap', () => applyTheme(readTheme()));
+      document.addEventListener('astro:page-load', () => applyTheme(readTheme()));
+
+      // Dev-mode HMR can evaluate this module more than once, and every
+      // evaluation would stack another listener — one click would then
+      // toggle twice and appear to do nothing. Bind exactly once.
+      const flags = window as any;
+      if (!flags.__themeBound) {
+        flags.__themeBound = true;
+        document.addEventListener('click', (event) => {
+          const btn = (event.target as HTMLElement)?.closest<HTMLElement>(
+            '[data-theme-toggle]',
+          );
+          if (!btn) return;
+          const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+          applyTheme(next);
+          try {
+            localStorage.setItem('theme', next);
+          } catch {
+            /* private mode: the choice simply will not persist */
+          }
+        });
+      }
+
+      // ── Scroll reveal ────────────────────────────────────────
+      // A rAF-throttled sweep rather than an IntersectionObserver:
+      // an observer never fires for blocks skipped by a fast scroll or
+      // a deep link, which would leave them invisible forever.
+      const w = window as any;
+
+      function armReveals() {
+        w.__revealsArmed = true;
+        w.__revealCleanup?.();
+
+        const targets = Array.from(
+          document.querySelectorAll<HTMLElement>('[data-reveal]:not(.is-in)'),
+        );
+        if (targets.length === 0) return;
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          targets.forEach((el) => el.classList.add('is-in'));
+          return;
+        }
+
+        let queued = false;
+
+        const sweep = () => {
+          queued = false;
+          const limit = window.innerHeight + 40;
+          for (let i = targets.length - 1; i >= 0; i -= 1) {
+            // `top < limit` also catches blocks above the viewport,
+            // so nothing is stranded by a jump.
+            if (targets[i].getBoundingClientRect().top < limit) {
+              targets[i].classList.add('is-in');
+              targets.splice(i, 1);
+            }
+          }
+          if (targets.length === 0) w.__revealCleanup?.();
+        };
+
+        const onScroll = () => {
+          if (queued) return;
+          queued = true;
+          requestAnimationFrame(sweep);
+        };
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+
+        w.__revealCleanup = () => {
+          window.removeEventListener('scroll', onScroll);
+          window.removeEventListener('resize', onScroll);
+          w.__revealCleanup = undefined;
+        };
+
+        sweep();
+      }
+
+      // `astro:page-load` can fire before this module is evaluated on the
+      // very first load, so arm once directly as well.
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', armReveals);
+      } else {
+        armReveals();
+      }
+      document.addEventListener('astro:page-load', armReveals);
+
+      // ── Field filtering ──────────────────────────────────────
+      // Delegated from document so it survives view transitions.
+      document.addEventListener('click', (event) => {
+        const chip = (event.target as HTMLElement)?.closest<HTMLElement>('[data-chip]');
+        if (!chip) return;
+
+        const group = chip.closest('[data-chips]');
+        const scope = chip.closest<HTMLElement>('[data-filter-scope]');
+        if (!group || !scope) return;
+
+        const key = chip.dataset.chip ?? 'all';
+        group.querySelectorAll<HTMLElement>('[data-chip]').forEach((el) => {
+          el.setAttribute('aria-pressed', String(el === chip));
+        });
+
+        let shown = 0;
+        scope.querySelectorAll<HTMLElement>('[data-fields]').forEach((item) => {
+          const owned = (item.dataset.fields ?? '').split(' ').filter(Boolean);
+          const match = key === 'all' || owned.includes(key);
+          item.hidden = !match;
+          if (match) shown += 1;
+        });
+
+        const counter = group.querySelector('[data-chips-count]');
+        if (counter) counter.textContent = `${shown} ${shown === 1 ? 'entry' : 'entries'}`;
+      });
+    </script>
+  </body>
+</html>

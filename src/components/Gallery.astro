@@ -1,0 +1,46 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface GalleryImage {
+  src: ImageMetadata;
+  alt: string;
+  caption?: string;
+}
+
+interface Props {
+  images: GalleryImage[];
+}
+
+const { images } = Astro.props;
+---
+
+{
+  images.length === 0 ? (
+    <p class="empty">
+      No images yet. Add them to the <code>images:</code> list in your gallery
+      markdown file.
+    </p>
+  ) : (
+    <div class="gallery">
+      {images.map((image, i) => (
+        <figure class="gitem" tabindex="0">
+          <Image
+            src={image.src}
+            alt={image.alt}
+            widths={[360, 560, 840, 1120]}
+            sizes="(max-width: 700px) 92vw, (max-width: 1040px) 46vw, 30vw"
+            loading={i < 4 ? 'eager' : 'lazy'}
+            decoding="async"
+          />
+          {/* The alt line duplicates the img alt for screen readers, so it is
+              hidden from them; the optional caption is real extra information. */}
+          <figcaption class="gitem__cap">
+            <span class="gitem__alt" aria-hidden="true">{image.alt}</span>
+            {image.caption && <span class="gitem__note">{image.caption}</span>}
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  )
+}

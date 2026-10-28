@@ -1,0 +1,56 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Shell from '../../layouts/Shell.astro';
+import EntryList from '../../components/EntryList.astro';
+import { fields, activeTabs } from '../../site.config';
+import { entriesForField } from '../../lib/entries';
+
+export const getStaticPaths = (() =>
+  fields.map((field) => ({ params: { field: field.id }, props: { field } }))) satisfies GetStaticPaths;
+
+const { field } = Astro.props;
+const entries = await entriesForField(field.id);
+
+// Entries keep the shape of the tab they live in, grouped by tab,
+// so a field page reads like the sections it draws from.
+const groups = activeTabs()
+  .map((tab) => ({
+    tab,
+    items: entries.filter((entry) => entry.data.tab === tab.id),
+  }))
+  .filter((group) => group.items.length > 0);
+---
+
+<Shell title={field.label} description={field.blurb}>
+  <header class="page-head">
+    <span
+      class="eyebrow fc-ink"
+      style={`--fc:${field.accent};--fc-light:${field.accentLight ?? field.accent}`}
+    >
+      Field
+    </span>
+    <h1>{field.label}</h1>
+    <p class="page-head__blurb">{field.blurb}</p>
+  </header>
+
+  {
+    groups.map((group) => (
+      <section class="section" style="margin-top:34px">
+        <div class="section__head">
+          <h2>{group.tab.label}</h2>
+          <a href={`/${group.tab.id}`}>{`${group.items.length} total →`}</a>
+        </div>
+        <EntryList entries={group.items} layout={group.tab.layout} />
+      </section>
+    ))
+  }
+
+  {
+    groups.length === 0 && (
+      <p class="empty">
+        Nothing tagged <strong>{field.label}</strong> yet. Add{' '}
+        <code>fields: [{field.id}]</code> to an entry's frontmatter.
+      </p>
+    )
+  }
+</Shell>

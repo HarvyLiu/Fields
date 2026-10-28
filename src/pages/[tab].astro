@@ -1,0 +1,82 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { render } from 'astro:content';
+import Shell from '../layouts/Shell.astro';
+import Chips from '../components/Chips.astro';
+import EntryList from '../components/EntryList.astro';
+import Gallery from '../components/Gallery.astro';
+import AboutBody from '../components/AboutBody.astro';
+import { activeTabs, fields } from '../site.config';
+import { entriesForTab } from '../lib/entries';
+import { galleryForTab, reportOrphanGalleries } from '../lib/galleries';
+
+await reportOrphanGalleries();
+
+export const getStaticPaths = (() =>
+  activeTabs().map((tab) => ({
+    params: { tab: tab.id },
+    props: { tab },
+  }))) satisfies GetStaticPaths;
+
+const { tab } = Astro.props;
+const isGallery = tab.layout === 'gallery';
+const entries = await entriesForTab(tab.id);
+const gallery = isGallery ? await galleryForTab(tab.id) : undefined;
+// A gallery file's markdown body is an optional intro above the images.
+const GalleryIntro = gallery ? (await render(gallery)).Content : null;
+
+// The section's position, so the number matches the overview.
+const index = activeTabs().findIndex((item) => item.id === tab.id) + 1;
+const numeral = String(index).padStart(2, '0');
+
+// Counts are per-tab: on Awards, "English 1" means one award, not
+// every English-tagged entry on the site.
+const options = fields
+  .map((field) => ({
+    id: field.id,
+    label: field.label,
+    count: entries.filter((e) => e.data.fields.includes(field.id)).length,
+  }))
+  .filter((option) => option.count > 0);
+---
+
+<Shell title={tab.label} description={tab.blurb}>
+  <header class="page-head" data-reveal>
+    <span class="section__num">{numeral}</span>
+    <h1>{tab.label}</h1>
+    <p class="page-head__blurb">{tab.blurb}</p>
+  </header>
+
+  {
+    tab.layout === 'about' ? (
+      <AboutBody />
+    ) : tab.layout === 'gallery' ? (
+      <div data-reveal>
+        {gallery?.data.summary && (
+          <p class="page-head__blurb gallery-intro">{gallery.data.summary}</p>
+        )}
+        {GalleryIntro && (
+          <div class="prose gallery-intro">
+            <GalleryIntro />
+          </div>
+        )}
+        {gallery ? (
+          <Gallery images={gallery.data.images} />
+        ) : (
+          <p class="empty">
+            This section shows images, but no gallery file points at it yet. Add{' '}
+            <code>src/content/galleries/{tab.id}.md</code> with{' '}
+            <code>tab: {tab.id}</code>.
+          </p>
+        )}
+      </div>
+    ) : (
+      <div data-filter-scope>
+        <Chips options={options} total={entries.length} />
+        <div data-reveal>
+          <EntryList entries={entries} layout={tab.layout} />
+        </div>
+      </div>
+    )
+  }
+</Shell>

@@ -1,0 +1,26 @@
+---
+import type { Entry } from '../lib/entries';
+import { formatRange, entryHref } from '../lib/entries';
+
+interface Props {
+  entry: Entry;
+}
+
+const { entry } = Astro.props;
+const href = entryHref(entry);
+---
+
+<li class="timeline__item" data-fields={entry.data.fields.join(' ')}>
+  <span class="timeline__date">
+    {formatRange(entry.data.date, entry.data.end) || 'Undated'}
+  </span>
+  <h3 class="timeline__title"><a href={href}>{entry.data.title}</a></h3>
+  <p class="timeline__body">{entry.data.summary}</p>
+  {
+    (entry.data.org || entry.data.role) && (
+      <span class="timeline__meta">
+        {[entry.data.org, entry.data.role].filter(Boolean).join(' · ')}
+      </span>
+    )
+  }
+</li>

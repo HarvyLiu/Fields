@@ -1,0 +1,45 @@
+---
+import type { Entry } from '../lib/entries';
+import { chronologically } from '../lib/entries';
+import type { Layout } from '../site.config';
+import EntryCard from './EntryCard.astro';
+import EntryRow from './EntryRow.astro';
+import TimelineItem from './TimelineItem.astro';
+
+interface Props {
+  entries: Entry[];
+  layout: Layout;
+}
+
+const { entries, layout } = Astro.props;
+
+// A timeline reads as a story when it runs oldest → newest.
+const items = layout === 'timeline' ? chronologically(entries) : entries;
+---
+
+{
+  items.length === 0 ? (
+    <p class="empty">
+      No entries yet. Add a markdown file to <code>src/content/entries</code> with{' '}
+      <code>tab: '…'</code> in its frontmatter.
+    </p>
+  ) : layout === 'grid' ? (
+    <div class="cards" data-items>
+      {items.map((entry) => (
+        <EntryCard entry={entry} />
+      ))}
+    </div>
+  ) : layout === 'list' ? (
+    <div class="rows" data-items>
+      {items.map((entry) => (
+        <EntryRow entry={entry} />
+      ))}
+    </div>
+  ) : (
+    <ol class="timeline" data-items>
+      {items.map((entry) => (
+        <TimelineItem entry={entry} />
+      ))}
+    </ol>
+  )
+}

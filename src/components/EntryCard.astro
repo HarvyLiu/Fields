@@ -1,0 +1,53 @@
+---
+import type { Entry } from '../lib/entries';
+import { fieldsOf, formatDate, entryHref } from '../lib/entries';
+
+interface Props {
+  entry: Entry;
+}
+
+const { entry } = Astro.props;
+const disciplines = fieldsOf(entry);
+const href = entryHref(entry);
+const meta = entry.data.org ?? entry.data.role ?? '';
+---
+
+<article class="card" data-fields={entry.data.fields.join(' ')}>
+  {
+    entry.data.image && (
+      <div class="card__media">
+        <img
+          src={entry.data.image}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          width="800"
+          height="450"
+        />
+      </div>
+    )
+  }
+
+  {
+    disciplines.length > 0 && (
+      <div class="card__fields">
+        {disciplines.map((field) => (
+          <span
+            class="fc-ink"
+            style={`--fc:${field!.accent};--fc-light:${field!.accentLight ?? field!.accent}`}
+          >
+            {field!.short}
+          </span>
+        ))}
+      </div>
+    )
+  }
+
+  <h3 class="card__title"><a href={href}>{entry.data.title}</a></h3>
+  <p class="card__summary">{entry.data.summary}</p>
+
+  <div class="card__foot">
+    <span class="card__org">{meta}</span>
+    <span>{formatDate(entry.data.date)}</span>
+  </div>
+</article>
