@@ -1,6 +1,6 @@
 ---
 import { ClientRouter } from 'astro:transitions';
-import { profile, theme } from '../site.config';
+import { profile, theme, splash } from '../site.config';
 import { tabCounts } from '../lib/entries';
 
 import '@fontsource/bebas-neue/400.css';
@@ -22,6 +22,22 @@ const isActive = (href: string) =>
   href === '/' ? path === '/' : path === href || path.startsWith(href + '/');
 
 const pageTitle = title ? `${title} — ${profile.name}` : `${profile.name} — ${profile.thesis}`;
+
+// The intro scene lives on the front page only. Whether it actually
+// plays is decided by the inline <head> script (session flag, reduced
+// motion) before the first paint.
+const showSplash = path === '/' && splash.enabled && splash.words.length > 0;
+const splashTotal = splash.words.length * splash.step + splash.hold + splash.exit;
+// The last line starts one step before the others finish, so it needs
+// just enough duration to reach the moment the curtains begin.
+const splashLast = splashTotal - (splash.words.length - 1) * splash.step;
+const splashVars = [
+  `--splash-step:${splash.step}ms`,
+  `--splash-hold:${splash.hold}ms`,
+  `--splash-exit:${splash.exit}ms`,
+  `--splash-total:${splashTotal}ms`,
+  `--splash-last:${splashLast}ms`,
+].join(';');
 
 // The two accents live on <html> because they differ per theme; the
 // stylesheet maps one of them to --accent for whichever ground is active.
@@ -74,10 +90,74 @@ const themeVars = [
         }, 2500);
       })();
     </script>
+    {
+      showSplash && (
+        <script is:inline>
+          (function () {
+            var root = document.documentElement;
+            var seen = false;
+            try {
+              seen = sessionStorage.getItem('intro') === '1';
+            } catch (e) {
+              /* storage blocked — treat it as unseen */
+            }
+            var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (seen || reduce) return;
+
+            // Armed before the body paints. The scene is display:none
+            // until this attribute exists, so with JS off it cannot
+            // cover the page at all.
+            root.setAttribute('data-splash', 'on');
+
+            try {
+              // Written at arm time: a blocked module must not turn
+              // this into a scene that replays on every load.
+              sessionStorage.setItem('intro', '1');
+            } catch (e) {
+              /* private mode: it may play again in a later tab */
+            }
+
+            // The CSS hides the panel on its own; only script can
+            // release the scroll lock, so release it no matter what.
+            setTimeout(function () {
+              root.setAttribute('data-splash', 'off');
+            }, 8000);
+          })();
+        </script>
+      )
+    }
     <ClientRouter />
   </head>
 
   <body>
+    {
+      showSplash && (
+        <div class="splash" id="splash" aria-hidden="true" style={splashVars}>
+          <span class="splash__curtain splash__curtain--top"></span>
+          <span class="splash__curtain splash__curtain--bottom">
+            <span class="splash__bar"></span>
+          </span>
+          <div class="splash__stage">
+            <span class="splash__reel">
+              {splash.words.map((word, index) => {
+                const isLast = index === splash.words.length - 1;
+                return (
+                  <span
+                    class={`splash__word${isLast ? ' splash__word--last' : ''}${
+                      isLast && splash.words.length > 1 ? ' splash__word--accent' : ''
+                    }`}
+                    style={`--i:${index}`}
+                  >
+                    {word}
+                  </span>
+                );
+              })}
+            </span>
+          </div>
+          <span class="splash__skip">Click to skip</span>
+        </div>
+      )
+    }
     <div class="shell">
       <header class="topbar">
         <div class="topbar__inner">
@@ -160,7 +240,7 @@ const themeVars = [
       // this keeps it correct after a client-side navigation and handles
       // the click. Delegated from document so it survives view transitions.
       const root = document.documentElement;
-      const GROUNDS = { dark: '#171415', light: '#f6f1e9' };
+      const GROUNDS = { dark: '#171415', light: '#f3f0fb' };
 
       function readTheme(): 'dark' | 'light' {
         try {
@@ -297,6 +377,46 @@ const themeVars = [
         const counter = group.querySelector('[data-chips-count]');
         if (counter) counter.textContent = `${shown} ${shown === 1 ? 'entry' : 'entries'}`;
       });
+
+      // ── Intro scene ──────────────────────────────────────────
+      // CSS runs the whole sequence; this only lets a visitor skip it
+      // and tidies up. The session flag was already written by the
+      // <head> script, so a failure here cannot make it replay.
+      document.addEventListener('astro:after-swap', () => {
+        // A scene interrupted by a navigation must not leave the next
+        // page scroll-locked.
+        document.documentElement.setAttribute('data-splash', 'off');
+      });
+
+      const scene = document.getElementById('splash');
+      const sw = window as any;
+      const armed = document.documentElement.getAttribute('data-splash') === 'on';
+
+      if (scene && armed && !sw.__splashBound) {
+        sw.__splashBound = true;
+
+        const endSplash = () => {
+          document.documentElement.setAttribute('data-splash', 'off');
+          scene.remove();
+        };
+
+        // If the module arrived after the scene had already finished
+        // (slow network), its animationend has been and gone — clean up
+        // now instead of waiting for the head script's watchdog.
+        if (getComputedStyle(scene).visibility === 'hidden') endSplash();
+
+        scene.addEventListener('click', endSplash);
+        scene.addEventListener('animationend', (event) => {
+          if ((event as AnimationEvent).animationName === 'splash-curtain-top') endSplash();
+        });
+        document.addEventListener('keydown', (event) => {
+          if (!scene.isConnected) return;
+          if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            endSplash();
+          }
+        });
+      }
     </script>
   </body>
 </html>

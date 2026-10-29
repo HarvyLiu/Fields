@@ -1,5 +1,6 @@
 ---
 import { about, profile } from '../site.config';
+import Icon from './Icon.astro';
 
 const sections = about.sections;
 
@@ -10,6 +11,22 @@ const hasPhrase = phrase.length > 0 && profile.thesis.includes(phrase);
 const cut = hasPhrase ? profile.thesis.indexOf(phrase) : 0;
 const before = hasPhrase ? profile.thesis.slice(0, cut) : profile.thesis;
 const after = hasPhrase ? profile.thesis.slice(cut + phrase.length) : '';
+
+// Contact pills carry an icon. An explicit `icon` in config wins;
+// otherwise the href identifies the service, and a plain writing link
+// gets a pen. Anything unknown falls back to a chain link.
+const iconFor = (link: { label: string; href: string; icon?: string }) => {
+  if (link.icon) return link.icon;
+  const href = link.href.toLowerCase();
+  const label = link.label.toLowerCase();
+  if (href.startsWith('mailto:')) return 'mail';
+  if (href.includes('github.com')) return 'github';
+  if (href.includes('linkedin.com')) return 'linkedin';
+  if (href.includes('x.com') || href.includes('twitter.com')) return 'x';
+  if (href.includes('instagram.com')) return 'instagram';
+  if (label === 'writing' || label === 'blog') return 'pen';
+  return 'link';
+};
 ---
 
 <div class="about">
@@ -77,8 +94,8 @@ const after = hasPhrase ? profile.thesis.slice(cut + phrase.length) : '';
                 target={link.href.startsWith('http') ? '_blank' : undefined}
                 rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
               >
+                <Icon name={iconFor(link)} size={14} />
                 {link.label}
-                {link.href.startsWith('http') && <span aria-hidden="true"> ↗</span>}
               </a>
             ))}
           </div>

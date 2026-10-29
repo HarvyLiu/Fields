@@ -17,8 +17,9 @@
      fallback for when that inline style is missing. */
   --accent-dark: #d3b8ff;
   /* If the config omits accentLight, derive one by mixing the dark
-     accent toward ink — a pale accent is unreadable on paper. */
-  --accent-light: color-mix(in srgb, var(--accent-dark) 52%, #17130f);
+     accent toward ink — a pale accent is unreadable on paper. 48%
+     keeps the shipped lavender at 4.9:1 on the light ground. */
+  --accent-light: color-mix(in srgb, var(--accent-dark) 48%, #17130f);
 
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
 
@@ -34,6 +35,8 @@
   --gutter: clamp(20px, 4vw, 24px);
   --measure: 1120px;
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Slight overshoot — the reel lands rather than arriving. */
+  --ease-pop: cubic-bezier(0.16, 1.16, 0.3, 1);
 }
 
 /* ── Dark: the default ground. ─────────────────────────────── */
@@ -45,7 +48,8 @@
   --bg-2: #1e1a1c;
   --bg-3: #262024;
 
-  --fg: #ffffff;
+  /* Off-white rather than #fff: the 190px display type glares otherwise. */
+  --fg: #eae5de;
   --fg-2: rgba(255, 255, 255, 0.7);
   /* 0.52 keeps 11px labels above 4.5:1 on this ground. */
   --fg-3: rgba(255, 255, 255, 0.52);
@@ -66,28 +70,31 @@
   --accent-ink: #171415;
 }
 
-/* ── Light: warm paper. Same poster, printed. ────────────────
+/* ── Light: lilac paper. Same poster, printed on colour. ─────
    Ratios are measured against --bg. The 11px labels need 4.5:1,
-   which is why --fg-3 is 0.62 here and 0.52 on the dark ground. */
+   which is why --fg-3 is 0.62 here and 0.52 on the dark ground.
+   The ground carries the accent's hue instead of trying to be
+   neutral, and --bg-3 is a genuine lavender hover step — cool, not
+   a tan wash. */
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #f6f1e9;
-  --bg-2: #fdfaf4;
-  --bg-3: #efe7da;
+  --bg: #f3f0fb;
+  --bg-2: #fbf9ff;
+  --bg-3: #ece8fa;
 
-  --fg: #171310;
-  --fg-2: rgba(23, 19, 16, 0.72); /* 7.0:1 */
-  --fg-3: rgba(23, 19, 16, 0.62); /* 5.0:1 */
+  --fg: #15101f;
+  --fg-2: rgba(21, 16, 31, 0.72); /* 7.1:1 */
+  --fg-3: rgba(21, 16, 31, 0.62); /* 5.0:1 */
 
-  --line: rgba(23, 19, 16, 0.14);
-  --line-2: rgba(23, 19, 16, 0.08);
-  --line-strong: rgba(23, 19, 16, 0.42);
+  --line: rgba(21, 16, 31, 0.14);
+  --line-2: rgba(21, 16, 31, 0.08);
+  --line-strong: rgba(21, 16, 31, 0.42);
 
-  --hover: rgba(23, 19, 16, 0.055);
-  --code-bg: rgba(23, 19, 16, 0.07);
-  --stroke: rgba(23, 19, 16, 0.3);
-  --body: rgba(23, 19, 16, 0.86);
+  --hover: rgba(21, 16, 31, 0.06);
+  --code-bg: rgba(21, 16, 31, 0.07);
+  --stroke: rgba(21, 16, 31, 0.3);
+  --body: rgba(21, 16, 31, 0.86);
 
   --accent: var(--accent-light);
   --accent-ink: #ffffff;
@@ -179,6 +186,240 @@ html.js [data-reveal].is-in {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+}
+
+/* ── Intro scene ───────────────────────────────────────────── */
+/* A reel, not a fade: each line rolls up through a masked window, the
+   last one lands and holds, then two curtains split apart. Hidden
+   unless the inline <head> script has armed it, so the site with
+   JavaScript off is exactly the site without a scene. The sequence is
+   CSS-only: a blocked module still gets the curtains and a hidden
+   panel; only the scroll lock needs the head script's watchdog. */
+.splash {
+  display: none;
+}
+
+html[data-splash='on'] {
+  overflow: hidden;
+}
+
+html[data-splash='on'] .splash {
+  display: grid;
+  place-items: center;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  touch-action: none;
+  /* Not animatable, so it snaps at the end. */
+  animation: splash-off 0.01s linear both;
+  animation-delay: var(--splash-total);
+}
+
+.splash__curtain {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  height: calc(50% + 1px);
+  background: var(--bg);
+  will-change: transform;
+  animation-duration: var(--splash-exit);
+  animation-timing-function: cubic-bezier(0.5, 0, 0.2, 1);
+  animation-fill-mode: both;
+  animation-delay: calc(var(--splash-total) - var(--splash-exit));
+}
+
+.splash__curtain--top {
+  top: 0;
+  animation-name: splash-curtain-top;
+}
+
+/* A hairline appears in the seam the moment the curtains part, so the
+   split reads as a cut rather than a fade. It rides up with the top. */
+.splash__curtain--top::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  animation: splash-fade 0.14s linear both;
+  animation-delay: calc(var(--splash-total) - var(--splash-exit));
+}
+
+.splash__curtain--bottom {
+  bottom: 0;
+  animation-name: splash-curtain-bottom;
+}
+
+.splash__stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding-inline: var(--gutter);
+  animation: splash-stage-out 0.24s var(--ease) both;
+  animation-delay: calc(var(--splash-total) - var(--splash-exit));
+}
+
+.splash__reel {
+  position: relative;
+  display: block;
+  height: 1em;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(52px, 12.5vw, 168px);
+  line-height: 1;
+  letter-spacing: 0.012em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.splash__word {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  height: 1em;
+  color: var(--fg);
+  white-space: nowrap;
+  opacity: 0;
+  animation: splash-roll calc(var(--splash-step) * 1.35) var(--ease-pop) both;
+  animation-delay: calc(var(--i) * var(--splash-step));
+  will-change: transform;
+}
+
+/* The last line enters at the same speed, then simply stays. */
+.splash__word--last {
+  animation-name: splash-roll-hold;
+  animation-duration: var(--splash-last);
+}
+
+.splash__word--accent {
+  color: var(--accent);
+}
+
+/* Sits inside the bottom curtain, so it rides away with it. */
+.splash__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: splash-bar var(--splash-total) linear both;
+}
+
+.splash__skip {
+  position: absolute;
+  right: var(--gutter);
+  bottom: 22px;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  animation:
+    splash-fade 0.5s var(--ease) 0.4s both,
+    splash-stage-out 0.2s var(--ease) calc(var(--splash-total) - var(--splash-exit)) both;
+}
+
+@keyframes splash-roll {
+  0% {
+    opacity: 0;
+    transform: translateY(105%);
+  }
+  6% {
+    opacity: 1;
+  }
+  36% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  64% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-105%);
+  }
+}
+
+@keyframes splash-roll-hold {
+  0% {
+    opacity: 0;
+    transform: translateY(105%);
+  }
+  5% {
+    opacity: 1;
+  }
+  16% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-stage-out {
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes splash-curtain-top {
+  to {
+    transform: translateY(-101%);
+  }
+}
+
+@keyframes splash-curtain-bottom {
+  to {
+    transform: translateY(101%);
+  }
+}
+
+@keyframes splash-off {
+  to {
+    visibility: hidden;
+  }
+}
+
+@keyframes splash-bar {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes splash-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The head script never arms it under reduced motion; this is the
+   belt-and-braces for a preference changed mid-flight. */
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    display: none !important;
   }
 }
 
@@ -1248,6 +1489,9 @@ html.js [data-reveal].is-in {
 }
 
 .about-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -1262,6 +1506,15 @@ html.js [data-reveal].is-in {
 .about-links a:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.about-links .icon {
+  flex: none;
+  opacity: 0.85;
+}
+
+.about-links a:hover .icon {
+  opacity: 1;
 }
 
 @media (max-width: 640px) {
@@ -1508,6 +1761,7 @@ html.js [data-reveal].is-in {
   .backlink,
   .btn,
   .marquee,
+  .splash,
   .site-foot {
     display: none !important;
   }

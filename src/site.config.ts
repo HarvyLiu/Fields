@@ -82,8 +82,10 @@ export interface AboutSection {
   /** Pull quote, set in the display face */
   quote?: string;
   quoteBy?: string;
-  /** Pill links at the foot of the section */
-  links?: { label: string; href: string }[];
+  /** Pill links at the foot of the section. `icon` is optional:
+   *  mail · github · linkedin · x · instagram · pen · link. Leave it
+   *  out and the icon is read from the href, or from a "Writing" label. */
+  links?: { label: string; href: string; icon?: string }[];
 }
 
 export const profile = {
@@ -167,7 +169,7 @@ export const fields: Field[] = [
     short: 'CS',
     blurb: 'Software, systems, and the people who have to use them.',
     accent: '#5ee0b0',
-    accentLight: '#0f5f4a',
+    accentLight: '#06705a',
   },
   {
     id: 'english',
@@ -175,7 +177,7 @@ export const fields: Field[] = [
     short: 'English',
     blurb: 'Close reading, essays, translation, and revision.',
     accent: '#f0a878',
-    accentLight: '#8a4b2a',
+    accentLight: '#a6411f',
   },
   {
     id: 'music',
@@ -183,7 +185,7 @@ export const fields: Field[] = [
     short: 'Music',
     blurb: 'Performance, arranging, and the math underneath sound.',
     accent: '#b39dfa',
-    accentLight: '#4a3f7a',
+    accentLight: '#5d33c9',
   },
 ];
 
@@ -209,12 +211,39 @@ export const theme = {
    *  This one is used on the dark ground, where a light accent reads. */
   accent: '#d3b8ff',
   /** The same accent tuned for the light ground. It is used as text on
-   *  a cream page and as a fill behind white text, so it must be dark
+   *  a pale page and as a fill behind white text, so it must be dark
    *  enough to carry either. Leave it out and one is derived from
    *  `accent` automatically. */
-  accentLight: '#5b3b8c',
+  accentLight: '#6a36dc',
   /** Multiplies vertical rhythm. 1 = default, 1.2 = airier. */
   density: 1,
+};
+
+/**
+ * The intro scene — what the front page shows before the site, once
+ * per tab session and only on a fresh load of `/`.
+ *
+ * The lines roll up through a masked window like a reel: each one
+ * settles, the next pushes it out, the last one lands in the accent
+ * and holds. Then the panel splits into two curtains and the site is
+ * underneath. Total run time is computed, never listed:
+ * `words.length * step + hold + exit` (3.1s with the defaults).
+ *
+ * Set `enabled: false` to remove it entirely. If `words` is empty the
+ * scene is skipped too. With `prefers-reduced-motion` it never plays,
+ * and the session flag is left unset, so it can still play once later.
+ */
+export const splash = {
+  /** false turns the scene off; nothing else needs changing. */
+  enabled: true,
+  /** The reel, in order. Rendered in Bebas, uppercased. */
+  words: [profile.name, 'quiet tools', 'made legible'] as string[],
+  /** ms the reel spends on each line. Lower is snappier. */
+  step: 620,
+  /** Extra time the last line holds before the curtains split. */
+  hold: 480,
+  /** ms for the two curtains to leave. */
+  exit: 780,
 };
 
 /**
